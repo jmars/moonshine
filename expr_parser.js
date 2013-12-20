@@ -8,11 +8,12 @@ var Lexer = (function(){
 	[
 		/^(typedef)[\s\n]*/, // typedef keyword
 		/^(struct)[\s\n]*/, // struct keyword
+		/^([\w_]+\s[\w_]+)[\s\n]*/, // type pair
 		/^([\w_]+)[\s\n]*/i, // ident
 		/^({)[\s\n]*/, // open block
 		/^(})[\s\n]*/, // close block
 		/^(,)[\s\n]*/, // comma
-		/^(;)[\s\n]*/, // terminator
+		/^(;)[\s\n]*/ // terminator
 	]
 
 	function new_symbol(type, value) {
@@ -56,89 +57,125 @@ var Parser = (function(Lexer){
 	var symbols = [
 		{// typedef
 			lbp: 0,
-			nud: function(){
-				this.first = expr(70);
-				this.second = expr(70);
+			nud: function(expr){
+				this.first = expr();
+				this.second = expr();
 				this.arity = 'unary';
 				return this
 			}
 		},
 		{// struct
 			lbp: 0,
-			nud: function(){
-				this.first = expr(70);
+			nud: function(expr){
+				this.first = expr();
+				this.second 
 				this.arity = 'unary';
+				return this
+			}
+		},
+		{// type pair
+			lbp: 0,
+			nud: function (expr) {
 				return this
 			}
 		},
 		{// ident
 			lbp: 0,
-			nud: function(){
+			nud: function(expr){
 				return this
 			}
 		},
 		{// open block
 			lbp: 0,
-			nud: function(){
-				return this
+			nud: function(expr){
+				this.first = expr();
+				return this;
 			}
 		},
 		{// close block
 			lbp: 0,
-			nud: function(){
+			nud: function(expr){
 				return this
 			}
 		},
 		{// comma
-			lbp: 80,
-			led: function(left){
-				this.left = left;
-				this.right = expr(this.lbp);
+			lbp: 0,
+			led: function(expr, left){
+				this.first = left;
+				this.second = expr(0);
 				this.arity = 'binary';
+				return this
+			},
+			nud: function(expr) {
 				return this
 			}
 		},
 		{// terminator
 			lbp: 0,
-			nud: function(){
+			nud: function(expr){
 				return this
 			}
 		}
-	]
+	];
+
+	symbols = (function(symbols){
+		for (var i = symbols.length-1; i >= 0; i--) {
+			var symbol = symbols[i];
+			symbol.toJSON = function(){
+				return {
+					type: this.type,
+					value: this.value,
+					lbp: this.lbp,
+					arity: this.arity,
+					first: this.first,
+					second: this.second
+				}
+			}
+		}
+		return symbols
+	})(symbols)
 
 	function sequence(tokens) {
 		var i = 0;
-		return {
+		var self = {
 			next: function advance() {
+				if (self.done) return {value:'END', nud:function(){return this}};
 				var
 					node = object(tokens[i++]),
 					behaviour = symbols[node.type];
 				node.lbp = behaviour.lbp;
 				node.nud = behaviour.nud;
 				node.led = behaviour.led;
-				if (i === tokens.length) this.done = true;
+				node.toJSON = behaviour.toJSON;
+				if (i === tokens.length) self.done = true;
 				return node
 			},
 			done: false
 		}
+		return self
 	}
 
-	function expression(token, advance) {
+	function expression(tok, advance) {
+		var token = tok;
 		return function expr(rbp){
+			if (rbp === null) rbp = 0;
 			var left, t = token;
-			advance();
-			left = t.nud();
+			token = advance();
+			left = t.nud(expr);
 			while (rbp < token.lbp) {
 				t = token;
 				advance();
-				left = t.led(left);
+				left = t.led(expr, left);
 			}
 			return left;
 		}
 	}
 
 	function parse_str(str){
-
+		var tokens = sequence(Lexer.lex(str));
+		var token = tokens.next();
+		var parser = expression(token, tokens.next);
+		return parser(0);
 	}
 
 	return {
@@ -146,6 +183,6 @@ var Parser = (function(Lexer){
 	}
 })(Lexer)
 
-var test = 'typedef struct { int a; } test_s'
+var test = 'struct { int a; }'
 
-console.log(Lexer.lex(test))
+console.log(JSON.stringify(Parser.parse(test), null, '  '));
