@@ -45,12 +45,10 @@ shine.VM = function (env) {
 	// this._packagedFiles = {};
 	this.fileManager = new shine.FileManager();
 	this._env = env || {};
-	this._coroutineStack = [];
 
 	this._status = shine.RUNNING;
 	this._resumeStack = [];
 	this._callbackQueue = [];
-	this._coroutineStack = [];
 
 	this._resetGlobals();
 };

@@ -167,7 +167,6 @@ shine.Closure.prototype._run = function () {
 	var instruction,
 		line,
 		retval,
-		yieldVars,
 		running;
 
 	this.terminated = false;
@@ -192,69 +191,11 @@ shine.Closure.prototype._run = function () {
 			shine.debug._setStatus(shine.RUNNING);
 		}
 
-	} else if ((running = this._vm._coroutineRunning) && running.status == shine.RESUMING) {
-	 	if (running._resumeStack.length) {
-			this._pc--;
-			
-		} else {
-			running.status = shine.RUNNING;
-			//shine.stddebug.write('[coroutine resumed]\n');
-	
-			yieldVars = running._yieldVars;
-		}
-	}	
-	
-
-	if (yieldVars) {
-		// instruction = this._instructions[this._pc - 1];
-
-		var offset = (this._pc - 1) * 4,
-			a = this._instructions[offset + 1],
-			b = this._instructions[offset + 2],
-			c = this._instructions[offset + 3],
-			retvals = shine.gc.createArray();
-
-		for (var i = 0, l = yieldVars.length; i < l; i++) retvals.push(yieldVars[i]);
-
-		if (c === 0) {
-			l = retvals.length;
-		
-			for (i = 0; i < l; i++) {
-				this._register.setItem(a + i, retvals[i]);
-			}
-
-			this._register.splice(a + l);
-		
-		} else {
-			for (i = 0; i < c - 1; i++) {
-				this._register.setItem(a + i, retvals[i]);
-			}
-		}
-
-		shine.gc.collect(retvals);
 	}
-
 
 	while (this._instructions[this._pc * 4] !== undefined) {
 		line = this._data.linePositions && this._data.linePositions[this._pc];
 		retval = this._executeInstruction(this._pc++, line);
-
-		if ((running = this._vm._coroutineRunning) && running.status == shine.SUSPENDING) {
-			running._resumeStack.push(this);
-
-			if (running._func._instance == this) {
-				retval = running._yieldVars;
-
-				running.status = shine.SUSPENDED;
-				shine.Coroutine._remove();
-
-				//shine.stddebug.write('[coroutine suspended]\n');
-				
-				return retval;
-			}
-			
-			return;
-		}
 
 		if (this._vm._status == shine.SUSPENDING && !retval) {
 			this._vm._resumeStack.push(this);
