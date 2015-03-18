@@ -82,6 +82,20 @@ var shine = shine || {};
 		 */
 		arrays: [],
 
+    /**
+     * Buffering of increment operations for deferred reference counting.
+     * @type Array
+     * @static
+     */
+    increments: [],
+
+    /**
+     * Buffering of decrement operations for deferred reference counting.
+     * @type Array
+     * @static
+     */
+    decrements: [],
+
 
 		/**
 		 * Number of objects and array that have been collected. Use for debugging.
@@ -151,13 +165,53 @@ var shine = shine || {};
 
 
 
+    /**
+     * Calculates deferred reference count updates.
+     */
+    syncReferences: function () {
+      var  length = this.increments.length > this.decrements.length
+        ? this.increments.length
+        : this.decrements.length;
+
+      console.log('syncing');
+      // Bail out early if we have nothing to do.
+      if (!length) return;
+
+      var freetable = [];
+
+      // Perform all reference updates in one pass.
+      for (var i = 0; i < length; i++) {
+        // Perform increments.
+        var ival = this.increments[i];
+        if (ival && ival.__shine) ival.__shine.refCount++;
+
+        // Perform decrements.
+        var dval = this.decrements[i];
+        if (dval && dval.__shine &&  --dval.__shine.refCount === 0) freetable.push(dval);
+      };
+
+      // Perform any necessary collections.
+      for (i = 0, length = freetable.length; i < length; i++) {
+        var fval = freetable[i];
+        if (fval.__shine && !fval.__shine.refCount) this.collect(fval);
+      };
+
+      console.log('Freed ' + freetable.length + ' objects.');
+
+      // Our reference counts are in sync, reset our buffers.
+      this.increments.length = this.decrements.length = 0;
+    },
+
+
+
+
 		/**
 		 * Reduces the number of references associated with an object by one and collect it if necessary.
 		 * @param {Object} Any object.
 		 */
 		decrRef: function (val) {
 			if (!val || !(val instanceof shine.Table) || val.__shine.refCount === undefined) return;
-			if (--val.__shine.refCount == 0) this.collect(val);
+      this.decrements.push(val);
 		},
 
 
@@ -169,7 +223,7 @@ var shine = shine || {};
 		 */
 		incrRef: function (val) {
 			if (!val || !(val instanceof shine.Table) || val.__shine.refCount === undefined) return;
-			val.__shine.refCount++;
+      this.increments.push(val);
 		},
 
 
@@ -208,6 +262,8 @@ var shine = shine || {};
 
 	};
 
+  // Start the reference counter.
+  setInterval(shine.gc.syncReferences.bind(shine.gc), 14);
 
 
 
