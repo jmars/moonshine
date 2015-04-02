@@ -233,7 +233,16 @@
 	
 	
 		collectgarbage: function (opt, arg) {
-			// Unimplemented
+      switch (opt) {
+        case "collect":
+          shine.gc.updateReferences(true)
+          break;
+        case "step":
+          shine.gc.updateReferences(false)
+          break;
+        default:
+          throw new shine.Error("Called collectgarbage with unsupported option " + opt + ".")
+      }
 		},
 	
 	

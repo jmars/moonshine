@@ -170,13 +170,14 @@ var shine = shine || {};
     /**
      * Calculates deferred reference count updates.
      */
-    updateReferences: function () {
+    updateReferences: function (force) {
       var  length = this.increments.length > this.decrements.length
         ? this.increments.length
         : this.decrements.length;
 
-      // Bail out early if we don't have much work to do
-      if (length < 128) return false;
+      // Bail out early if we have no work or not much work to do
+      if (!length) return false;
+      if (length < 128 && !force) return false;
 
       var freetable = [];
 
@@ -196,6 +197,9 @@ var shine = shine || {};
         var fval = freetable[i];
         if (fval.__shine && !fval.__shine.refCount) this.collect(fval);
       };
+
+      // force gc to cycle until collections stop
+      if (force) while (this.updateReferences(true)) {};
 
       // Our reference counts are in sync, reset our buffers.
       this.increments.length = this.decrements.length = 0;
