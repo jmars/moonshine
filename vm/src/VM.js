@@ -50,8 +50,7 @@
 		// this._files = [];
 		// this._packagedFiles = {};
 		this.fileManager = new shine.FileManager();
-		this._env = env || {};
-		this._coroutineStack = [];
+		this._env = new shine.Table(env);
 
 		this._status = shine.RUNNING;
 		this._resumeStack = [];

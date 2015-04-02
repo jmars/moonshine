@@ -252,10 +252,21 @@
 	
 	
 	
-		
+  
 		getfenv: function (f) {
-			// Unimplemented
+      if (!(f instanceof shine.Function)) throw new shine.Error("May only call getfenv on functions!");
+      return f._globals;
 		},
+
+
+
+
+    setfenv: function(f, table) {
+      if (!(f instanceof shine.Function)) throw new shine.Error("May only call setfenv on functions!");
+      if (!(table instanceof shine.Table)) throw new shine.Error("Must pass a table to setfenv!");
+      f._globals = table;
+      return f;
+    },
 		
 		
 		
@@ -904,7 +915,7 @@
 
 
 		setfenv: function (object, table) {
-			// Not implemented
+      // Not implemented
 		},
 
 

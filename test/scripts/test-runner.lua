@@ -115,6 +115,7 @@ run 'lib-table'
 run 'lib-math'
 run 'lib-coroutine'
 run 'lib-date'
+run 'lib-fenv'
 
 
 

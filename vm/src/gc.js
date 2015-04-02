@@ -147,6 +147,7 @@ var shine = shine || {};
 		 */
 		createArray: function () {
 			if (this.arrays.length) this.reused++;
+      this.updateReferences();
 			return this.arrays.pop() || [];
 		},
 
@@ -159,6 +160,7 @@ var shine = shine || {};
 		 */
 		createObject: function () { 
 			if (this.objects.length) this.reused++;
+      this.updateReferences();
 			return this.objects.pop() || {};
 		},
 
@@ -168,14 +170,13 @@ var shine = shine || {};
     /**
      * Calculates deferred reference count updates.
      */
-    syncReferences: function () {
+    updateReferences: function () {
       var  length = this.increments.length > this.decrements.length
         ? this.increments.length
         : this.decrements.length;
 
-      console.log('syncing');
-      // Bail out early if we have nothing to do.
-      if (!length) return;
+      // Bail out early if we don't have much work to do
+      if (length < 128) return false;
 
       var freetable = [];
 
@@ -196,10 +197,10 @@ var shine = shine || {};
         if (fval.__shine && !fval.__shine.refCount) this.collect(fval);
       };
 
-      console.log('Freed ' + freetable.length + ' objects.');
-
       // Our reference counts are in sync, reset our buffers.
       this.increments.length = this.decrements.length = 0;
+
+      return true
     },
 
 
@@ -226,8 +227,8 @@ var shine = shine || {};
       this.increments.push(val);
 		},
 
-
-
+    // use hashing to speed up table lookups
+    // promote tables to v8 structs
 
 		/**
 		 * Collect an object.
@@ -259,12 +260,6 @@ var shine = shine || {};
 			for (i in val) if (val.hasOwnProperty(i)) this.decrRef(val[i]);
 		}
 
-
 	};
-
-  // Start the reference counter.
-  setInterval(shine.gc.syncReferences.bind(shine.gc), 14);
-
-
 
 })(shine || {});
